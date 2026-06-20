@@ -1,0 +1,175 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles */
+:root {
+  --primary: #6366f1; /* Indigo-500 */
+  --primary-dark: #4f46e5; /* Indigo-600 */
+  --secondary: #10b981; /* Emerald-500 */
+  --secondary-dark: #059669; /* Emerald-600 */
+  --danger: #ef4444; /* Red-500 */
+  --danger-dark: #dc2626; /* Red-600 */
+  --warning: #f59e0b; /* Amber-500 */
+  --warning-dark: #d97706; /* Amber-600 */
+  --info: #3b82f6; /* Blue-500 */
+  --info-dark: #2563eb; /* Blue-600 */
+  --light: #f8fafc; /* Slate-50 */
+  --dark: #1e293b; /* Slate-800 */
+  --gray: #64748b; /* Slate-500 */
+  --gray-dark: #334155; /* Slate-700 */
+  --border: #e2e8f0; /* Slate-200 */
+  --border-dark: #475569; /* Slate-600 */
+  --background: #ffffff;
+  --background-dark: #0f172a; /* Slate-900 */
+  --card-bg: #ffffff;
+  --card-bg-dark: #1e293b; /* Slate-800 */
+  --text-primary: #1e293b; /* Slate-800 */
+  --text-primary-dark: #f8fafc; /* Slate-50 */
+  --text-secondary: #64748b; /* Slate-500 */
+  --text-secondary-dark: #94a3b8; /* Slate-400 */
+}
+
+/* Dark mode support */
+.dark {
+  --primary: #818cf8; /* Indigo-400 */
+  --primary-dark: #6366f1; /* Indigo-500 */
+  --secondary: #34d399; /* Emerald-400 */
+  --secondary-dark: #10b981; /* Emerald-500 */
+  --danger: #f87171; /* Red-400 */
+  --danger-dark: #ef4444; /* Red-500 */
+  --warning: #fbbf24; /* Amber-400 */
+  --warning-dark: #f59e0b; /* Amber-500 */
+  --info: #60a5fa; /* Blue-400 */
+  --info-dark: #3b82f6; /* Blue-500 */
+  --light: #1e293b; /* Slate-800 */
+  --dark: #f8fafc; /* Slate-50 */
+  --gray: #94a3b8; /* Slate-400 */
+  --gray-dark: #cbd5e1; /* Slate-300 */
+  --border: #475569; /* Slate-600 */
+  --border-dark: #64748b; /* Slate-500 */
+  --background: #0f172a; /* Slate-900 */
+  --background-dark: #1e293b; /* Slate-800 */
+  --card-bg: #1e293b; /* Slate-800 */
+  --card-bg-dark: #334155; /* Slate-700 */
+  --text-primary: #f8fafc; /* Slate-50 */
+  --text-primary-dark: #1e293b; /* Slate-800 */
+  --text-secondary: #94a3b8; /* Slate-400 */
+  --text-secondary-dark: #cbd5e1; /* Slate-300 */
+}
+
+/* Pterodactyl-inspired card styles */
+.card-pro {
+  @apply bg-card-bg border border-border rounded-xl shadow-sm dark:border-border-dark dark:bg-card-bg-dark;
+}
+
+.card-pro-header {
+  @apply flex items-center justify-between px-6 py-4 border-b border-border dark:border-border-dark;
+}
+
+.card-pro-title {
+  @apply text-lg font-semibold text-text-primary dark:text-text-primary-dark;
+}
+
+.card-pro-content {
+  @apply p-6;
+}
+
+/* Button styles */
+.btn-primary {
+  @apply bg-primary text-white px-4 py-2 rounded-md font-medium hover:bg-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-primary-dark dark:focus:ring-offset-dark dark:focus:ring-primary;
+}
+
+.btn-secondary {
+  @apply bg-secondary text-white px-4 py-2 rounded-md font-medium hover:bg-secondary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-secondary-dark dark:focus:ring-offset-dark dark:focus:ring-secondary;
+}
+
+.btn-danger {
+  @apply bg-danger text-white px-4 py-2 rounded-md font-medium hover:bg-danger-dark transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-danger-dark dark:focus:ring-offset-dark dark:focus:ring-danger;
+}
+
+.btn-g hover: {
+  @apply bg-gray-100 text-gray-800 px-4 py-2 rounded-md font-medium hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus-ring-offset-white focus:ring-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600 dark:focus:ring-offset-dark dark:focus:ring-gray-600;
+}
+
+.btn-link {
+  @apply text-primary hover:text-primary-dark transition-colors font-medium dark:text-primary-dark dark:hover:text-primary;
+}
+
+/* Input styles */
+.input-pro {
+  @apply w-full px-4 py-3 rounded-md border border-border bg-background text-text-primary placeholder:text-gray-400 focus:outline-none focus:ring-2 focus-ring-offset-2 focus-ring-offset-white focus:ring-primary-dark dark:border-border-dark dark:bg-card-bg-dark dark:text-text-primary-dark dark:placeholder:text-gray-300 dark:focus:ring-offset-dark dark:focus:ring-primary;
+}
+
+.input-pro-sm {
+  @apply w-full px-3 py-2 rounded-md border border-border bg-background text-text-primary placeholder:text-gray-400 focus:outline-none focus:ring-2 focus-ring-offset-2 focus-ring-offset-white focus:ring-primary-dark dark:border-border-dark dark:bg-card-bg-dark dark:text-text-primary-dark dark:placeholder:text-gray-300 dark:focus:ring-offset-dark dark:focus:ring-primary;
+}
+
+/* Table styles */
+.table-pro {
+  @apply w-full border-collapse bg-background dark:bg-card-bg-dark;
+}
+
+.table-pro th {
+  @apply px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wiser dark:text-text-secondary-dark border-b border-border dark:border-border-dark;
+}
+
+.table-pro td {
+  @apply px-6 py-4 text-text-primary dark:text-text-primary-dark border-t border-border dark:border-border-dark;
+}
+
+.table-pro tr:hover {
+  @apply bg-gray-50 dark:bg-gray-700;
+}
+
+/* Badge styles */
+.badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.badge-success {
+  @apply bg-secondary-dark/10 text-secondary-dark dark:bg-secondary/20 dark:text-secondary;
+}
+
+.badge-danger {
+  @apply bg-danger-dark/10 text-danger-dark dark:bg-danger/20 dark:text-danger;
+}
+
+.badge-warning {
+  @apply bg-warning-dark/10 text-warning-dark dark:bg-warning/20 dark:text-warning;
+}
+
+.badge-info {
+  @apply bg-info-dark/10 text-info-dark dark:bg-info/20 dark:text-info;
+}
+
+.badge-secondary {
+  @apply bg-gray-200/10 text-gray-800 dark:bg-gray-700/20 dark:text-gray-200;
+}
+
+/* Avatar styles */
+.avatar {
+  @apply relative inline-flex h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-white bg-gray-200 text-center text-sm font-medium leading-none dark:border-gray-700 dark:bg-gray-600 dark:text-gray-300;
+}
+
+.avatar img {
+  @apply h-full w-full object-cover;
+}
+
+/* Loading spinner */
+.loading-spinner {
+  @apply inline-block h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent;
+}
+
+/* Utility classes */
+.text-primary-color {
+  @apply text-primary dark:text-text-primary-dark;
+}
+
+.bg-primary-color {
+  @apply bg-primary dark:bg-primary-dark;
+}
+
+.hover-bg-primary-color {
+  @apply hover:bg-primary-dark dark:hover:bg-primary;
+}
