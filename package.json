@@ -1,0 +1,23 @@
+{
+  "name": "bl-host",
+  "version": "1.0.0",
+  "description": "Game Server Panel - Full Stack Application",
+  "private": true,
+  "scripts": {
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "dev": "concurrently \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "start": "npm --prefix backend start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.0"
+  },
+  "keywords": [
+    "game-server",
+    "panel",
+    "management",
+    "pterodactyl"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

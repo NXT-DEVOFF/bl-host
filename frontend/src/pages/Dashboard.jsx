@@ -1,13 +1,133 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiUsers, FiServer, FiWifi, FiActivity } from 'react-icons/fi';
+import { Card, Button, Badge, Loading, Error } from '../components/UI';
+import serverService from '../services/serverService';
 
 const Dashboard = () => {
-  const [stats, setStats] = useState({ servers: 0, online: 0, users: 0, uptime: '0h' });
-  const [loading, setLoading] = useState(true);
-  const [recentActivity, setRecentActivity] = useState([]);
   const navigate = useNavigate();
+  const [stats, setStats] = useState(null);
+  const [servers, setServers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  const loadDashboard = async () => {
+    try {
+      setLoading(true);
+      const [statsRes, serversRes] = await Promise.all([
+        serverService.getStats(),
+        serverService.getServers(),
+      ]);
+      setStats(statsRes.data);
+      setServers(serversRes.data.servers || []);
+    } catch (err) {
+      setError(err.error?.message || 'Failed to load dashboard');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return <Loading />;
+
+  return (
+    <div className="p-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
+        <p className="text-gray-600">Welcome to your game server panel</p>
+      </div>
+
+      {error && <Error message={error} />}
+
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Card>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-600">{stats.servers.total}</div>
+              <div className="text-gray-600 text-sm">Total Servers</div>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-600">{stats.servers.online}</div>
+              <div className="text-gray-600 text-sm">Online</div>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-red-600">{stats.servers.offline}</div>
+              <div className="text-gray-600 text-sm">Offline</div>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-purple-600">{stats.games}</div>
+              <div className="text-gray-600 text-sm">Games</div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      <Card>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">Your Servers</h2>
+          <Button variant="primary" onClick={() => navigate('/servers/create')}>
+            + Create Server
+          </Button>
+        </div>
+
+        {servers.length === 0 ? (
+          <p className="text-gray-600 text-center py-8">
+            No servers yet. Create your first server!
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700">Name</th>
+                  <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700">Game</th>
+                  <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700">Status</th>
+                  <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700">IP:Port</th>
+                  <th className="px-4 py-2 text-right text-sm font-semibold text-gray-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {servers.map((server) => (
+                  <tr key={server.id} className="border-t hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium">{server.name}</td>
+                    <td className="px-4 py-3">{server.game}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant={server.status === 'online' ? 'green' : 'red'}>
+                        {server.status}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {server.ip_address}:{server.port || 'N/A'}
+                    </td>
+                    <td className="px-4 py-3 text-right space-x-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => navigate(`/servers/${server.id}`)}
+                      >
+                        View
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+};
+
+export default Dashboard;
 
   useEffect(() => {
     const fetchData = async () => {

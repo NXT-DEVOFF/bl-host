@@ -1,53 +1,151 @@
 # BL-Host - Game Server Panel
 
-A modern game server panel inspired by Pterodactyl, built with Node.js/Express backend and React/Vite frontend.
+Une application web moderne pour gérer vos serveurs de jeux dans une interface unique.
 
-## Features
+## ✨ Fonctionnalités
 
-- 🔐 Secure authentication (JWT-based)
-- 🖥️ Server management (CRUD operations)
-- ▶️ Server control (start/stop simulations)
-- 📊 Dashboard with statistics
-- 🔍 Search and filter servers
-- 📱 Fully responsive design
-- 🌓 Dark/Light mode support
-- 🎨 Modern UI with Tailwind CSS
-- 🛡️ Protected routes
-- ⚡ Fast development with Vite
+- 🔐 Authentification sécurisée (JWT)
+- 🖥️ Gestion complète des serveurs (CRUD)
+- ⚡ Démarrage/Arrêt des serveurs
+- 📊 Statistiques en temps réel
+- 🎮 Support de plusieurs jeux
+- 📱 Interface responsive
+- 🎨 Design moderne avec Tailwind CSS
+- 🛡️ Routes protégées
 
-## Tech Stack
+## 🏗️ Architecture
 
-### Backend
-- Node.js
-- Express.js
-- Sequelize ORM
-- SQLite (development) / MySQL (production)
-- JWT for authentication
-- bcrypt for password hashing
-
-### Frontend
-- React
-- Vite
-- Tailwind CSS
-- React Router
-- Axios for HTTP requests
-- React Icons
-
-## Quick Start
-
-### Prerequisites
-- Node.js (v14+)
-- npm or yarn
-
-### Installation
-
-1. Clone the repository
-```bash
-git clone <repository-url>
-cd bl-host
+```
+bl-host/
+├── backend/              # API Node.js/Express
+│   ├── config/          # Configuration
+│   ├── controllers/      # Logique métier
+│   ├── models/          # Modèles Sequelize
+│   ├── routes/          # Routes API
+│   ├── services/        # Services métier
+│   ├── middleware/      # Middleware
+│   ├── utils/           # Utilitaires
+│   └── server.js        # Entrée backend
+├── frontend/            # App React/Vite
+│   ├── src/
+│   │   ├── components/  # Composants réutilisables
+│   │   ├── pages/       # Pages
+│   │   ├── services/    # Services API
+│   │   ├── hooks/       # Hooks personnalisés
+│   │   ├── utils/       # Utilitaires
+│   │   └── App.jsx      # Entrée frontend
+│   └── vite.config.js
+├── .env.example         # Variables d'environnement
+└── README.md
 ```
 
-2. Setup Backend
+## 🚀 Installation Rapide
+
+### Prérequis
+- Node.js 14+
+- npm ou yarn
+
+### Backend
+
+```bash
+cd backend
+npm install
+cp ../.env.example .env  # Configurer les variables
+npm run dev
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Accédez à l'application à `http://localhost:5173`
+
+## 📝 Variables d'Environnement
+
+Créez un fichier `.env` à la racine :
+
+```env
+NODE_ENV=development
+PORT=5000
+DB_DIALECT=sqlite
+JWT_SECRET=your_secret_key_here
+CORS_ORIGIN=http://localhost:5173
+```
+
+## 🔑 Identifiants de Démonstration
+
+- **Email**: admin@blhost.com
+- **Mot de passe**: admin123
+
+## 📚 Documentation API
+
+### Authentification
+
+- `POST /api/auth/register` - Inscription
+- `POST /api/auth/login` - Connexion
+- `POST /api/auth/refresh` - Rafraîchir le token
+- `GET /api/auth/me` - Profil actuel
+
+### Serveurs
+
+- `GET /api/servers` - Lister les serveurs
+- `POST /api/servers` - Créer un serveur
+- `GET /api/servers/:id` - Obtenir un serveur
+- `PUT /api/servers/:id` - Modifier un serveur
+- `DELETE /api/servers/:id` - Supprimer un serveur
+- `POST /api/servers/:id/action` - Démarrer/Arrêter
+
+### Statistiques
+
+- `GET /api/stats` - Statistiques globales
+
+## 🧪 Tests
+
+```bash
+# Backend
+cd backend
+npm test
+
+# Frontend
+cd frontend
+npm run test
+```
+
+## 📦 Déploiement
+
+Consultez [deploy-vps.sh](./deploy-vps.sh) pour le déploiement en production.
+
+## 🛠️ Stack Technique
+
+### Backend
+- Node.js + Express
+- Sequelize ORM
+- SQLite / MySQL
+- JWT pour l'authentification
+- bcryptjs pour le hachage
+
+### Frontend
+- React 18
+- Vite (build tool)
+- Tailwind CSS
+- Axios (HTTP client)
+- React Router
+
+## 🤝 Contribution
+
+Les contributions sont les bienvenues!
+
+## 📄 Licence
+
+MIT - Voir LICENSE
+
+## 📧 Support
+
+Pour toute question, ouvrez une issue sur GitHub.
 ```bash
 cd backend
 npm install

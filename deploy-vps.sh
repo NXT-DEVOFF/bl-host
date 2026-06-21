@@ -89,7 +89,7 @@ npm install --production
 echo "[9/10] Building frontend..."
 cd ../frontend
 npm install
-npm run build
+VITE_API_URL=/api npm run build
 
 # Copy frontend build to Nginx HTML directory
 echo "[10/10] Configuring Nginx..."
@@ -144,6 +144,9 @@ echo "[11/10] Setting up PM2 process manager..."
 npm install -g pm2
 cd "$APP_DIR/backend"
 
+# Generate a random JWT secret
+JWT_SECRET="blhostsecretkey123_$(openssl rand -hex 12)"
+
 # Create ecosystem.config.js for PM2
 cat > ecosystem.config.js << EOF
 module.exports = {
@@ -163,7 +166,8 @@ module.exports = {
       DB_HOST: 'localhost',
       DIALECT: 'sqlite',
       STORAGE: './database.sqlite',
-      JWT_SECRET: 'blhostsecretkey123_$(openssl rand -hex 12)'
+      JWT_SECRET: '$JWT_SECRET',
+      JWT_EXPIRATION: '7d'
     }
   }]
 };
@@ -176,15 +180,14 @@ pm2 startup systemd -u blhost --hp /home/blhost
 
 # Final setup
 echo "[12/10] Finalizing setup..."
-# Ensure storage directory is writable
-mkdir -p "$APP_DIR/backend/database.sqlite" 2>/dev/null || true
+# Ensure storage directory exists (SQLite will create the file)
+mkdir -p "$APP_DIR/backend"
 chown -R blhost:blhost "$APP_DIR/backend"
-chmod 755 "$APP_DIR/backend"
 
 # Test the API
 echo "[13/10] Testing backend API..."
 sleep 5  # Give PM2 time to start
-if curl -s http://localhost:5000/ | grep -q "BL-Host API is running"; then
+if curl -s http://localhost:5000/health | grep -q '"status":"ok"'; then
   echo "✓ Backend API is responding"
 else
   echo "⚠ Backend API may not be ready yet - checking logs..."
