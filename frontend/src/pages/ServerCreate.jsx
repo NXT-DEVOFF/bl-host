@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import serverService from '../services/serverService';
 
 const ServerCreate = () => {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { id } = useParams();
+  const isEdit = Boolean(id);
+
   const [formData, setFormData] = useState({
     name: '',
     game: '',
@@ -30,63 +32,72 @@ const ServerCreate = () => {
     { value: 'other', label: 'Autre' },
   ];
 
+  // Pré-remplissage en mode édition
+  useEffect(() => {
+    if (!isEdit) return;
+    const fetchServer = async () => {
+      try {
+        const res = await serverService.getServerById(id);
+        const s = res.data;
+        setFormData({
+          name: s.name || '',
+          game: s.game || '',
+          description: s.description || '',
+          memory: s.memory || 1024,
+          disk: s.disk || 5000,
+          cpu: s.cpu || 100,
+          ports: s.ports || '',
+        });
+      } catch (err) {
+        console.error('Failed to load server:', err);
+        setError('Impossible de charger le serveur à modifier.');
+      }
+    };
+    fetchServer();
+  }, [id, isEdit]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
     setLoading(true);
 
+    const payload = {
+      name: formData.name,
+      game: formData.game,
+      description: formData.description,
+      memory: formData.memory,
+      disk: formData.disk,
+      cpu: formData.cpu,
+      ports: formData.ports,
+    };
+
     try {
       let res;
-      if (location.state && location.state.server) {
-        // Edit mode
-        res = await axios.put(
-          `/api/servers/${location.state.server.id}`,
-          formData,
-          {
-            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-          }
-        );
+      if (isEdit) {
+        res = await serverService.updateServer(id, payload);
         setSuccess('Serveur mis à jour avec succès !');
       } else {
-        // Create mode
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        const userId = user.id || 1;
-        res = await axios.post(
-          '/api/servers',
-          {
-            ...formData,
-            userId,
-          },
-          {
-            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-          }
-        );
+        res = await serverService.createServer(payload);
         setSuccess('Serveur créé avec succès !');
       }
+      const newId = res.data.id;
       setTimeout(() => {
-        navigate(`/servers/${res.data.id}`);
-      }, 1500);
+        navigate(`/servers/${newId}`);
+      }, 1000);
     } catch (err) {
       console.error('Failed to save server:', err);
-      setError('Impossible d\'enregistrer le serveur. Veuillez vérifier les informations et réessayer.');
+      setError(err.error?.message || 'Impossible d\'enregistrer le serveur. Veuillez vérifier les informations et réessayer.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Prefill form if editing
-  React.useEffect(() => {
-    if (location.state && location.state.server) {
-      setFormData(location.state.server);
-    }
-  }, [location.state]);
-
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {location.state && location.state.server ? 'Modifier le serveur' : 'Créer un nouveau serveur'}
+          {isEdit ? 'Modifier le serveur' : 'Créer un nouveau serveur'}
         </h1>
         <Link to="/servers" className="btn-link hover:text-primary-dark dark:hover:text-primary">
           Retour à la liste
@@ -100,7 +111,7 @@ const ServerCreate = () => {
       )}
 
       {success && (
-        <div className="bg-green-50 text-green-500 dark:bg-green-900 dark:text-green-400 p-4 rounded-md mb-6">
+        <div className="bg-green-50 text-green-600 dark:bg-green-900 dark:text-green-400 p-4 rounded-md mb-6">
           {success}
         </div>
       )}
@@ -117,7 +128,7 @@ const ServerCreate = () => {
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="input-pro"
-              placeholder="Mon serveur MineCraft"
+              placeholder="Mon serveur Minecraft"
             />
           </div>
 
@@ -229,14 +240,9 @@ const ServerCreate = () => {
               disabled={loading}
               className="btn-primary w-[200px]"
             >
-              {loading ? (
-                <>
-                  <span className="loading-spinner mr-2"></span>
-                  {location.state && location.state.server ? 'Mise à jour...' : 'Création...'}
-                </>
-              ) : (
-                location.state && location.state.server ? 'Mettre à jour' : 'Créer le serveur'
-              )}
+              {loading
+                ? (isEdit ? 'Mise à jour...' : 'Création...')
+                : (isEdit ? 'Mettre à jour' : 'Créer le serveur')}
             </button>
           </div>
         </div>

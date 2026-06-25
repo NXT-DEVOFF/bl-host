@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 export const useAsync = (asyncFunction, immediate = true) => {
   const [status, setStatus] = useState('idle');
@@ -22,13 +22,12 @@ export const useAsync = (asyncFunction, immediate = true) => {
     }
   }, [asyncFunction]);
 
-  // Call execute if immediate is true
-  if (immediate) {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    React.useEffect(() => {
+  // Call execute on mount if immediate is true
+  useEffect(() => {
+    if (immediate) {
       execute();
-    }, [execute]);
-  }
+    }
+  }, [execute, immediate]);
 
   return { execute, status, data, error };
 };

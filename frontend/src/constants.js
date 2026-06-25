@@ -3,7 +3,6 @@ export const GAMES = [
   { id: 'cs2', name: 'Counter-Strike 2' },
   { id: 'valorant', name: 'Valorant' },
   { id: 'rust', name: 'Rust' },
-  { id: 'rust', name: 'Rust' },
   { id: 'ark', name: 'ARK: Survival Evolved' },
 ];
 

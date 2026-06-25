@@ -4,7 +4,7 @@ const { validateServerName, validatePort, validateIP } = require('../utils/valid
 
 class ServerService {
   async createServer(userId, data) {
-    const { name, game, ip_address, port } = data;
+    const { name, game, ip_address, port, description, memory, disk, cpu, ports } = data;
 
     // Validation
     if (!name || !game) {
@@ -28,6 +28,11 @@ class ServerService {
       game,
       ip_address: ip_address || null,
       port: port || null,
+      description: description || null,
+      memory: memory || undefined,
+      disk: disk || undefined,
+      cpu: cpu || undefined,
+      ports: ports || null,
       userId,
       status: 'offline',
     });

@@ -6,13 +6,14 @@ export const Card = ({ children, className = '' }) => (
   </div>
 );
 
-export const Button = ({ 
-  children, 
-  variant = 'primary', 
+export const Button = ({
+  children,
+  variant = 'primary',
   size = 'md',
   disabled = false,
   loading = false,
-  ...props 
+  className = '',
+  ...props
 }) => {
   const variants = {
     primary: 'bg-blue-600 hover:bg-blue-700 text-white',
@@ -34,6 +35,7 @@ export const Button = ({
         ${variants[variant]}
         ${sizes[size]}
         ${disabled || loading ? 'opacity-50 cursor-not-allowed' : ''}
+        ${className}
       `}
       disabled={disabled || loading}
       {...props}
@@ -43,11 +45,12 @@ export const Button = ({
   );
 };
 
-export const Input = ({ 
-  label, 
-  error, 
-  type = 'text', 
-  ...props 
+export const Input = ({
+  label,
+  error,
+  type = 'text',
+  className = '',
+  ...props
 }) => (
   <div className="mb-4">
     {label && (
@@ -61,6 +64,7 @@ export const Input = ({
         w-full px-3 py-2 border rounded-lg
         focus:outline-none focus:ring-2 focus:ring-blue-500
         ${error ? 'border-red-500' : 'border-gray-300'}
+        ${className}
       `}
       {...props}
     />

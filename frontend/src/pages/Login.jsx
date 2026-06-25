@@ -32,7 +32,8 @@ const Login = () => {
     try {
       const response = await authService.login(email, password);
       localStorage.setItem('token', response.data.token);
-      setMessage({ type: 'success', text: 'Login successful!' });
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      setMessage({ type: 'success', text: 'Connexion réussie !' });
       setTimeout(() => navigate('/'), 1000);
     } catch (error) {
       setMessage({

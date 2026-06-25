@@ -25,6 +25,29 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: true,
     },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    memory: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+      defaultValue: 1024,
+    },
+    disk: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+      defaultValue: 5000,
+    },
+    cpu: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+      defaultValue: 100,
+    },
+    ports: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
   }, {
     tableName: 'servers',
     timestamps: true,

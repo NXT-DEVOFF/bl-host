@@ -21,10 +21,3 @@ router.delete('/:id', serverController.deleteServer);
 router.post('/:id/action', serverController.toggleServerStatus);
 
 module.exports = router;
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-module.exports = router;

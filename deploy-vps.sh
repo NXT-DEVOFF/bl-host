@@ -1,226 +1,283 @@
 #!/bin/bash
-# BL-Host Panel Deployment Script for Debian 12 VPS
-# Assumes code is pushed to a remote Git repository
-# Makes backend run via PM2, frontend served by Nginx, auto-start on boot
+# =============================================================================
+# BL-Host Panel - Script de déploiement pour VPS Debian 12 / Ubuntu
+# -----------------------------------------------------------------------------
+# Ce script :
+#   1. Installe Node.js 20, Nginx, PM2 (et Certbot si un domaine est fourni)
+#   2. Clone (ou met à jour) le dépôt
+#   3. Build le frontend (servi par Nginx) et lance le backend (via PM2)
+#   4. Initialise la base de données (utilisateur admin + serveurs démo)
+#   5. Configure Nginx (reverse proxy /api) + HTTPS automatique si domaine
+#   6. Active le démarrage automatique au boot
+#
+# Le script est ré-exécutable : relancé, il met simplement à jour le déploiement.
+# =============================================================================
 
-set -e  # Exit on any error
+set -euo pipefail
 
-echo "=== BL-Host Panel VPS Deployment Script ==="
-echo "This script will:"
-echo "1. Update system and install dependencies"
-echo "2. Install Node.js, Nginx, PM2"
-echo "3. Clone your repository"
-echo "4. Build and deploy the application"
-echo "5. Configure auto-start on boot"
+echo "=== BL-Host Panel - Déploiement VPS ==="
 echo ""
 
-# Check if running as root
+# --- Vérifier les droits root --------------------------------------------------
 if [ "$EUID" -ne 0 ]; then
-  echo "Please run as root (use sudo)"
+  echo "Veuillez exécuter ce script en root (sudo)."
   exit 1
 fi
 
-# Ask for repository URL
-echo -n "Enter your Git repository URL (e.g., https://github.com/username/bl-host.git): "
+# --- Saisie des paramètres -----------------------------------------------------
+DEFAULT_REPO="https://github.com/NXT-DEVOFF/bl-host.git"
+echo -n "URL du dépôt Git [${DEFAULT_REPO}] : "
 read REPO_URL
+REPO_URL="${REPO_URL:-$DEFAULT_REPO}"
 
-# Ask for domain or IP
-echo -n "Enter your domain name or VPS IP address (e.g., example.com or 123.45.67.89): "
+echo -n "Nom de domaine OU adresse IP du VPS (ex: panel.mondomaine.com ou 103.102.135.188) : "
 read DOMAIN
+if [ -z "$DOMAIN" ]; then
+  echo "Un domaine ou une IP est requis."
+  exit 1
+fi
 
-# Ask for admin email (for SSL later, optional)
-echo -n "Enter admin email for SSL certificates (optional, press enter to skip): "
+echo -n "Email administrateur (pour le certificat SSL, laisser vide si pas de domaine) : "
 read ADMIN_EMAIL
 
-echo ""
-echo "Starting deployment..."
-echo "Repository: $REPO_URL"
-echo "Domain/IP: $DOMAIN"
-if [ -n "$ADMIN_EMAIL" ]; then
-  echo "Admin email: $ADMIN_EMAIL"
+# Détecter si DOMAIN est une adresse IP (pas de SSL possible sur une IP nue)
+IS_IP=false
+if [[ "$DOMAIN" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+  IS_IP=true
 fi
+
+# Décider si on active HTTPS (domaine + email fournis)
+USE_SSL=false
+PROTO="http"
+if [ "$IS_IP" = false ] && [ -n "$ADMIN_EMAIL" ]; then
+  USE_SSL=true
+  PROTO="https"
+fi
+
 echo ""
+echo "Dépôt        : $REPO_URL"
+echo "Domaine/IP   : $DOMAIN"
+echo "HTTPS (SSL)  : $([ "$USE_SSL" = true ] && echo "oui (Let's Encrypt)" || echo "non")"
+echo ""
+echo "Démarrage du déploiement dans 3 secondes... (Ctrl+C pour annuler)"
+sleep 3
 
-# Update system
-echo "[1/10] Updating system packages..."
-apt update && apt upgrade -y
+APP_DIR="/home/blhost/app"
+BACKEND_DIR="$APP_DIR/backend"
+FRONTEND_DIR="$APP_DIR/frontend"
+NGINX_DIR="/var/www/blhost"
+NGINX_CONF="/etc/nginx/sites-available/blhost"
 
-# Install dependencies
-echo "[2/10] Installing dependencies (git, curl, nginx, etc)..."
-apt install -y git curl nginx
+# --- [1/13] Mise à jour du système --------------------------------------------
+echo "[1/13] Mise à jour des paquets système..."
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -y
+apt-get upgrade -y
 
-# Install Node.js 20.x LTS
-echo "[3/10] Installing Node.js 20.x LTS..."
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt-get install -y nodejs
+# --- [2/13] Dépendances de base ------------------------------------------------
+echo "[2/13] Installation de git, curl, nginx..."
+apt-get install -y git curl nginx ca-certificates openssl
 
-# Verify installations
-echo "[4/10] Verifying installations..."
+# --- [3/13] Node.js 20.x LTS ---------------------------------------------------
+echo "[3/13] Installation de Node.js 20.x LTS..."
+if ! command -v node >/dev/null 2>&1 || [ "$(node -v | cut -d. -f1 | tr -d 'v')" -lt 18 ]; then
+  curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+  apt-get install -y nodejs
+fi
+
+# --- [4/13] Vérification -------------------------------------------------------
+echo "[4/13] Vérification des versions..."
 node --version
 npm --version
 nginx -v
 
-# Create app user for security
-echo "[5/10] Creating application user..."
+# --- [5/13] Utilisateur applicatif --------------------------------------------
+echo "[5/13] Création de l'utilisateur système 'blhost'..."
 if ! id "blhost" &>/dev/null; then
-  useradd -r -s /bin/false blhost
-  echo "Created system user 'blhost'"
+  useradd -m -s /bin/bash blhost
+  echo "Utilisateur 'blhost' créé."
 else
-  echo "User 'blhost' already exists"
+  echo "Utilisateur 'blhost' déjà présent."
 fi
 
-# Set up directory structure
-echo "[6/10] Setting up directory structure..."
-APP_DIR="/home/blhost/app"
-mkdir -p "$APP_DIR"
-chown blhost:blhost "$APP_DIR"
+# --- [6/13] Récupération du code (clone ou mise à jour) ------------------------
+echo "[6/13] Récupération du code source..."
+mkdir -p /home/blhost
+if [ -d "$APP_DIR/.git" ]; then
+  echo "Dépôt déjà présent, mise à jour (git pull)..."
+  git -C "$APP_DIR" reset --hard
+  git -C "$APP_DIR" pull
+else
+  rm -rf "$APP_DIR"
+  git clone "$REPO_URL" "$APP_DIR"
+fi
+chown -R blhost:blhost "$APP_DIR"
 
-# Clone repository
-echo "[7/10] Cloning repository from $REPO_URL..."
-sudo -u blhost git clone "$REPO_URL" "$APP_DIR"
-cd "$APP_DIR"
+# --- [7/13] Génération du fichier .env de production --------------------------
+# Généré une seule fois : un redéploiement conserve le même JWT_SECRET
+# (sinon tous les utilisateurs connectés seraient déconnectés à chaque mise à jour).
+if [ -f "$BACKEND_DIR/.env" ] && grep -q "^JWT_SECRET=" "$BACKEND_DIR/.env"; then
+  echo "[7/13] Configuration backend (.env) déjà présente, conservation."
+else
+  echo "[7/13] Génération de la configuration backend (.env)..."
+  JWT_SECRET="$(openssl rand -hex 32)"
+  cat > "$BACKEND_DIR/.env" <<EOF
+NODE_ENV=production
+PORT=5000
 
-# Install backend dependencies
-echo "[8/10] Installing backend dependencies..."
-cd backend
-npm install --production
+# Base de données SQLite (aucun serveur externe nécessaire)
+DB_DIALECT=sqlite
+DB_STORAGE=./database.sqlite
 
-# Build frontend
-echo "[9/10] Building frontend..."
-cd ../frontend
-npm install
+# Authentification
+JWT_SECRET=$JWT_SECRET
+JWT_EXPIRATION=7d
+
+# CORS et logs
+CORS_ORIGIN=$PROTO://$DOMAIN
+LOG_LEVEL=info
+EOF
+fi
+chown blhost:blhost "$BACKEND_DIR/.env"
+chmod 600 "$BACKEND_DIR/.env"
+
+# --- [8/13] Backend : dépendances + initialisation de la base -----------------
+echo "[8/13] Installation des dépendances backend..."
+cd "$BACKEND_DIR"
+npm install --omit=dev
+echo "Initialisation de la base de données (admin + serveurs démo)..."
+npm run seed
+chown -R blhost:blhost "$BACKEND_DIR"
+
+# --- [9/13] Frontend : build de production ------------------------------------
+echo "[9/13] Build du frontend..."
+cd "$FRONTEND_DIR"
+# NODE_ENV ne doit pas valoir 'production' ici, sinon Vite/Tailwind (devDeps) ne s'installent pas
+NODE_ENV=development npm install
 VITE_API_URL=/api npm run build
 
-# Copy frontend build to Nginx HTML directory
-echo "[10/10] Configuring Nginx..."
-FRONTEND_DIST="$APP_DIR/frontend/dist"
-NGINX_DIR="/var/www/blhost"
+echo "Copie du build vers $NGINX_DIR..."
 mkdir -p "$NGINX_DIR"
-cp -r "$FRONTEND_DIST"/* "$NGINX_DIR"/
+rm -rf "${NGINX_DIR:?}/"*
+cp -r "$FRONTEND_DIR/dist/"* "$NGINX_DIR"/
 chown -R www-data:www-data "$NGINX_DIR"
 
-# Create Nginx configuration
-NGINX_CONF="/etc/nginx/sites-available/blhost"
-cat > "$NGINX_CONF" << EOF
+# --- [10/13] Configuration Nginx ----------------------------------------------
+echo "[10/13] Configuration de Nginx..."
+cat > "$NGINX_CONF" <<EOF
 server {
-    listen 80;
+    listen 80 default_server;
+    listen [::]:80 default_server;
     server_name $DOMAIN;
 
     root $NGINX_DIR;
     index index.html;
 
+    # SPA React : toutes les routes inconnues renvoient index.html
     location / {
         try_files \$uri \$uri/ /index.html;
     }
 
+    # API : reverse proxy vers le backend Node (préfixe /api conservé)
     location /api/ {
-        proxy_pass http://localhost:5000/;
+        proxy_pass http://127.0.0.1:5000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
         proxy_set_header Host \$host;
-        proxy_cache_bypass \$http_upgrade;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
-    # Optional: increase upload limits if needed
     client_max_body_size 10M;
 }
-
-# Redirect non-www to www or vice versa (uncomment and adjust as needed)
-# server {
-#     listen 80;
-#     server_name www.$DOMAIN;
-#     return 301 \$scheme://$DOMAIN\$request_uri;
-# }
 EOF
 
-# Enable site and test Nginx
-ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/
+# Activer notre site et désactiver le site par défaut
+ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/blhost
+rm -f /etc/nginx/sites-enabled/default
+
 nginx -t
 systemctl reload nginx
 
-# Set up PM2 for backend
-echo "[11/10] Setting up PM2 process manager..."
+# --- [11/13] PM2 : process manager du backend ---------------------------------
+echo "[11/13] Configuration de PM2..."
 npm install -g pm2
-cd "$APP_DIR/backend"
 
-# Generate a random JWT secret
-JWT_SECRET="blhostsecretkey123_$(openssl rand -hex 12)"
-
-# Create ecosystem.config.js for PM2
-cat > ecosystem.config.js << EOF
+cat > "$BACKEND_DIR/ecosystem.config.js" <<EOF
 module.exports = {
-  apps : [{
-    name: 'BL-Host API',
+  apps: [{
+    name: 'bl-host-api',
     script: 'server.js',
+    cwd: '$BACKEND_DIR',
     instances: 1,
     autorestart: true,
     watch: false,
-    max_memory_restart: '1G',
+    max_memory_restart: '512M',
     env: {
       NODE_ENV: 'production',
-      PORT: 5000,
-      DB_NAME: 'blhost',
-      DB_USER: 'root',
-      DB_PASSWORD: '',
-      DB_HOST: 'localhost',
-      DIALECT: 'sqlite',
-      STORAGE: './database.sqlite',
-      JWT_SECRET: '$JWT_SECRET',
-      JWT_EXPIRATION: '7d'
+      PORT: 5000
     }
   }]
 };
 EOF
 
-# Start the app with PM2
+cd "$BACKEND_DIR"
+pm2 delete bl-host-api 2>/dev/null || true
 pm2 start ecosystem.config.js
 pm2 save
-pm2 startup systemd -u blhost --hp /home/blhost
+# Démarrage automatique au boot (PM2 tourne en root)
+pm2 startup systemd -u root --hp /root >/dev/null 2>&1 || true
+systemctl enable pm2-root >/dev/null 2>&1 || true
 
-# Final setup
-echo "[12/10] Finalizing setup..."
-# Ensure storage directory exists (SQLite will create the file)
-mkdir -p "$APP_DIR/backend"
-chown -R blhost:blhost "$APP_DIR/backend"
-
-# Test the API
-echo "[13/10] Testing backend API..."
-sleep 5  # Give PM2 time to start
-if curl -s http://localhost:5000/health | grep -q '"status":"ok"'; then
-  echo "✓ Backend API is responding"
-else
-  echo "⚠ Backend API may not be ready yet - checking logs..."
-  pm2 logs BL-Host API --lines 10
+# --- [12/13] Pare-feu + SSL ----------------------------------------------------
+echo "[12/13] Pare-feu et certificat SSL..."
+# Ouvrir les ports si ufw est actif
+if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
+  ufw allow OpenSSH || true
+  ufw allow 'Nginx Full' || true
 fi
 
+if [ "$USE_SSL" = true ]; then
+  echo "Installation de Certbot et obtention du certificat pour $DOMAIN..."
+  apt-get install -y certbot python3-certbot-nginx
+  if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$ADMIN_EMAIL" --redirect; then
+    echo "✓ HTTPS activé pour https://$DOMAIN"
+  else
+    echo "⚠ Échec de l'obtention du certificat SSL."
+    echo "  Vérifiez que l'enregistrement DNS A de $DOMAIN pointe bien vers ce VPS,"
+    echo "  puis relancez : sudo certbot --nginx -d $DOMAIN"
+  fi
+else
+  echo "SSL non configuré (IP fournie ou email manquant)."
+fi
+
+# --- [13/13] Test de santé -----------------------------------------------------
+echo "[13/13] Vérification du backend..."
+sleep 4
+if curl -fs http://127.0.0.1:5000/health | grep -q '"status":"ok"'; then
+  echo "✓ Le backend répond correctement."
+else
+  echo "⚠ Le backend ne répond pas encore. Logs :"
+  pm2 logs bl-host-api --lines 15 --nostream || true
+fi
+
+# --- Récapitulatif -------------------------------------------------------------
 echo ""
-echo "=== Deployment Complete! ==="
+echo "=== Déploiement terminé ! ==="
 echo ""
-echo "Your BL-Host panel should now be accessible at:"
-echo "  http://$DOMAIN"
+echo "Votre panel BL-Host est accessible sur :"
+echo "  $PROTO://$DOMAIN"
 echo ""
-echo "Default admin credentials (if seeded):"
-echo "  Email: admin@blhost.com"
-echo "  Password: admin123"
+echo "Identifiants administrateur par défaut :"
+echo "  Email    : admin@blhost.com"
+echo "  Mot de passe : admin123"
+echo "  (Pensez à le changer après la première connexion.)"
 echo ""
-echo "Important next steps:"
-echo "1. Configure SSL/TLS certificates (recommended):"
-echo "   sudo apt install certbot python3-certbot-nginx"
-echo "   sudo certbot --nginx -d $DOMAIN"
+echo "Commandes utiles :"
+echo "  pm2 status               # état du backend"
+echo "  pm2 logs bl-host-api     # logs du backend"
+echo "  pm2 restart bl-host-api  # redémarrer le backend"
 echo ""
-echo "2. Manage your application with PM2:"
-echo "   pm2 status          # View running processes"
-echo "   pm2 logs BL-Host API  # View backend logs"
-echo "   pm2 restart BL-Host API # Restart backend"
+echo "Pour mettre à jour le site après un 'git push' :"
+echo "  sudo bash $APP_DIR/deploy-vps.sh   # relancer ce script (il fera un git pull)"
 echo ""
-echo "3. To update your deployment:"
-echo "   cd /home/blhost/app"
-echo "   git pull"
-echo "   cd backend && npm install --production"
-echo "   cd ../frontend && npm install && npm run build"
-echo "   cp -r frontend/dist/* /var/www/blhost/"
-echo "   pm2 restart BL-Host API"
-echo ""
-echo "Your panel is now set to start automatically on boot!"
-echo "Reboot your VPS to test: sudo reboot"

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import authService from '../services/authService';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -22,19 +22,12 @@ const Register = () => {
     }
 
     try {
-      await axios.post('/api/auth/register', {
-        email,
-        password,
-      });
-      // Redirect to login after successful registration
+      await authService.register(email, password);
+      // Redirige vers la connexion après une inscription réussie
       navigate('/login');
     } catch (err) {
-      // Handle error response from backend
-      if (err.response && err.response.data && err.response.data.message) {
-        setError(err.response.data.message);
-      } else {
-        setError('Erreur lors de l\'inscription. Veuillez réessayer.');
-      }
+      // L'intercepteur Axios renvoie le corps { success, error: { message } }
+      setError(err.error?.message || 'Erreur lors de l\'inscription. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
