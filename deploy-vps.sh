@@ -103,6 +103,8 @@ fi
 # --- [6/13] Récupération du code (clone ou mise à jour) ------------------------
 echo "[6/13] Récupération du code source..."
 mkdir -p /home/blhost
+# Autoriser git à opérer sur ce dépôt même s'il appartient à 'blhost'
+git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
 if [ -d "$APP_DIR/.git" ]; then
   echo "Dépôt déjà présent, mise à jour (git pull)..."
   git -C "$APP_DIR" reset --hard
