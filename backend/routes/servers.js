@@ -11,6 +11,12 @@ router.post('/', serverController.createServer);
 // Get specific server
 router.get('/:id', serverController.getServerById);
 
+// Get live status (from Docker if available)
+router.get('/:id/status', serverController.getServerStatus);
+
+// Get server console logs
+router.get('/:id/logs', serverController.getServerLogs);
+
 // Update server
 router.put('/:id', serverController.updateServer);
 

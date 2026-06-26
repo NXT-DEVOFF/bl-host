@@ -57,7 +57,9 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 // Database sync and server start
-db.sequelize.sync().then(() => {
+// `alter: true` ajoute automatiquement les nouvelles colonnes (ex: container_id)
+// aux bases existantes lors d'une mise à jour, sans perdre les données.
+db.sequelize.sync({ alter: true }).then(() => {
   app.listen(PORT, () => {
     logger.info(`BL-Host API running on port ${PORT}`);
   });

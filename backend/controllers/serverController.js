@@ -59,10 +59,33 @@ const toggleServerStatus = handleAsyncError(async (req, res) => {
   const { id } = req.params;
   const { action } = req.body;
   const server = await serverService.toggleServerStatus(id, userId, action);
-  
+
   res.json({
     success: true,
     data: server,
+  });
+});
+
+const getServerStatus = handleAsyncError(async (req, res) => {
+  const { userId } = req;
+  const { id } = req.params;
+  const result = await serverService.getServerStatus(id, userId);
+
+  res.json({
+    success: true,
+    data: result,
+  });
+});
+
+const getServerLogs = handleAsyncError(async (req, res) => {
+  const { userId } = req;
+  const { id } = req.params;
+  const tail = Math.min(Number(req.query.tail) || 200, 1000);
+  const result = await serverService.getServerLogs(id, userId, tail);
+
+  res.json({
+    success: true,
+    data: result,
   });
 });
 
@@ -73,4 +96,6 @@ module.exports = {
   updateServer,
   deleteServer,
   toggleServerStatus,
+  getServerStatus,
+  getServerLogs,
 };

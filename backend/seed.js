@@ -5,9 +5,9 @@ const logger = require('./config/logger');
 
 const seedDatabase = async () => {
   try {
-    // Sync database
+    // Sync database (alter: ajoute les colonnes manquantes sans perte de données)
     logger.info('Syncing database...');
-    await db.sequelize.sync();
+    await db.sequelize.sync({ alter: true });
     logger.info('Database synced successfully');
 
     // Check if admin user already exists

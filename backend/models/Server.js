@@ -48,6 +48,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING(255),
       allowNull: true,
     },
+    // Identifiant du conteneur Docker associé (null = serveur en mode démo).
+    container_id: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+    },
   }, {
     tableName: 'servers',
     timestamps: true,

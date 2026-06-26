@@ -25,6 +25,14 @@ const serverService = {
     return apiClient.post(`/servers/${id}/action`, { action });
   },
 
+  getServerStatus: async (id) => {
+    return apiClient.get(`/servers/${id}/status`);
+  },
+
+  getServerLogs: async (id, tail = 200) => {
+    return apiClient.get(`/servers/${id}/logs?tail=${tail}`);
+  },
+
   getStats: async () => {
     return apiClient.get('/stats');
   },
