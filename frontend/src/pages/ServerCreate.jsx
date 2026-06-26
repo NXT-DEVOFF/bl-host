@@ -94,9 +94,9 @@ const ServerCreate = () => {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-6 animate-fade-in">
+      <div className="mb-6 flex items-center justify-between animate-fade-in-down">
+        <h1 className="text-2xl font-bold text-gradient inline-block">
           {isEdit ? 'Modifier le serveur' : 'Créer un nouveau serveur'}
         </h1>
         <Link to="/servers" className="btn-link hover:text-primary-dark dark:hover:text-primary">

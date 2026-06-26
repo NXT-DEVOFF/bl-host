@@ -46,10 +46,25 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center mb-2">BL-Host</h1>
-        <p className="text-gray-600 text-center mb-6">Panneau de serveurs de jeu</p>
+    <div className="relative min-h-screen bg-animated-gradient flex items-center justify-center p-4 overflow-hidden">
+      {/* Bulles décoratives en arrière-plan */}
+      <div className="blob bg-violet-400/40 h-72 w-72 -top-10 -left-10" />
+      <div className="blob bg-indigo-300/40 h-80 w-80 bottom-0 right-0" style={{ animationDelay: '4s' }} />
+      <div className="blob bg-emerald-300/30 h-64 w-64 top-1/3 left-1/4" style={{ animationDelay: '8s' }} />
+
+      <Card className="relative w-full max-w-md glass-card animate-scale-in">
+        <div className="flex flex-col items-center mb-6 animate-fade-in-down">
+          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 animate-float">
+            <svg className="h-9 w-9 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+              <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+              <line x1="6" y1="6" x2="6.01" y2="6" />
+              <line x1="6" y1="18" x2="6.01" y2="18" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold text-center mt-4 text-gradient">BL-Host</h1>
+          <p className="text-gray-600 text-center text-sm mt-1">Panneau de serveurs de jeu</p>
+        </div>
 
         {message.text && (
           message.type === 'error' ?

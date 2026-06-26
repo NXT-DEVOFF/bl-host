@@ -41,10 +41,23 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="w-full max-w-md space-y-8 p-6">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+    <div className="relative min-h-screen flex items-center justify-center bg-animated-gradient p-4 overflow-hidden">
+      {/* Bulles décoratives en arrière-plan */}
+      <div className="blob bg-violet-400/40 h-72 w-72 -top-10 -right-10" />
+      <div className="blob bg-indigo-300/40 h-80 w-80 bottom-0 left-0" style={{ animationDelay: '4s' }} />
+      <div className="blob bg-emerald-300/30 h-64 w-64 top-1/4 right-1/4" style={{ animationDelay: '8s' }} />
+
+      <div className="relative w-full max-w-md space-y-8 p-8 rounded-2xl glass-card animate-scale-in">
+        <div className="text-center animate-fade-in-down">
+          <div className="mx-auto h-16 w-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 animate-float">
+            <svg className="h-9 w-9 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+              <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+              <line x1="6" y1="6" x2="6.01" y2="6" />
+              <line x1="6" y1="18" x2="6.01" y2="18" />
+            </svg>
+          </div>
+          <h2 className="text-3xl font-bold mt-4 text-gradient">
             BL-Host Panel
           </h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
