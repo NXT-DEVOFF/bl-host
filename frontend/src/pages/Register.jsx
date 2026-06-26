@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
+import { validatePassword } from '../utils/validators';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -14,6 +15,12 @@ const Register = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
+    if (!validatePassword(password)) {
+      setError('Le mot de passe doit contenir au moins 8 caractères, dont une majuscule, une minuscule et un chiffre.');
+      setLoading(false);
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError('Les mots de passe ne correspondent pas.');
@@ -75,6 +82,9 @@ const Register = () => {
               className="input-pro"
               placeholder="••••••••"
             />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Au moins 8 caractères, une majuscule, une minuscule et un chiffre.
+            </p>
           </div>
 
           <div>

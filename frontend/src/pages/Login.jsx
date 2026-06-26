@@ -19,9 +19,9 @@ const Login = () => {
 
     // Validation
     const newErrors = {};
-    if (!email) newErrors.email = 'Email is required';
-    else if (!validateEmail(email)) newErrors.email = 'Invalid email';
-    if (!password) newErrors.password = 'Password is required';
+    if (!email) newErrors.email = 'L\'email est requis';
+    else if (!validateEmail(email)) newErrors.email = 'Email invalide';
+    if (!password) newErrors.password = 'Le mot de passe est requis';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -38,7 +38,7 @@ const Login = () => {
     } catch (error) {
       setMessage({
         type: 'error',
-        text: error.error?.message || 'Login failed'
+        text: error.error?.message || 'Échec de la connexion'
       });
     } finally {
       setIsLoading(false);
@@ -49,7 +49,7 @@ const Login = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <h1 className="text-3xl font-bold text-center mb-2">BL-Host</h1>
-        <p className="text-gray-600 text-center mb-6">Game Server Panel</p>
+        <p className="text-gray-600 text-center mb-6">Panneau de serveurs de jeu</p>
 
         {message.text && (
           message.type === 'error' ?
@@ -68,12 +68,12 @@ const Login = () => {
           />
 
           <Input
-            label="Password"
+            label="Mot de passe"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             error={errors.password}
-            placeholder="Enter your password"
+            placeholder="Entrez votre mot de passe"
           />
 
           <Button
@@ -83,21 +83,21 @@ const Login = () => {
             className="w-full"
             disabled={isLoading}
           >
-            Login
+            {isLoading ? 'Connexion...' : 'Se connecter'}
           </Button>
         </form>
 
         <p className="text-center text-gray-600 mt-4 text-sm">
-          Don't have an account?{' '}
+          Pas encore de compte ?{' '}
           <Link to="/register" className="text-blue-600 hover:underline">
-            Register here
+            Inscrivez-vous
           </Link>
         </p>
 
         <div className="mt-6 p-4 bg-blue-50 rounded border border-blue-200 text-sm text-blue-700">
-          <strong>Demo credentials:</strong><br />
-          Email: admin@blhost.com<br />
-          Password: admin123
+          <strong>Identifiants de démonstration :</strong><br />
+          Email : admin@blhost.com<br />
+          Mot de passe : admin123
         </div>
       </Card>
     </div>

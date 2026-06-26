@@ -143,6 +143,9 @@ const ServerCreate = () => {
               className="input-pro"
             >
               <option value="">Sélectionnez un jeu</option>
+              {formData.game && !games.some((g) => g.value === formData.game) && (
+                <option value={formData.game}>{formData.game}</option>
+              )}
               {games.map((game) => (
                 <option key={game.value} value={game.value}>
                   {game.label}

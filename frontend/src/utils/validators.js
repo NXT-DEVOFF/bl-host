@@ -4,7 +4,14 @@ export const validateEmail = (email) => {
 };
 
 export const validatePassword = (password) => {
-  return password.length >= 8;
+  // Doit correspondre aux règles du backend : 8+ caractères, une majuscule,
+  // une minuscule et un chiffre.
+  return (
+    password.length >= 8 &&
+    /[A-Z]/.test(password) &&
+    /[a-z]/.test(password) &&
+    /[0-9]/.test(password)
+  );
 };
 
 export const validateServerName = (name) => {

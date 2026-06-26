@@ -25,8 +25,13 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    if (error.response?.status === 401) {
+    const url = error.config?.url || '';
+    const isAuthRoute = url.includes('/auth/login') || url.includes('/auth/register');
+    // Redirige seulement en cas de session expirée sur une route protégée,
+    // pas lorsqu'un login/register échoue (sinon le message d'erreur ne s'affiche jamais).
+    if (error.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
       window.location.href = '/login';
     }
     return Promise.reject(error.response?.data || error.message);
