@@ -45,6 +45,20 @@ echo "[2/4] Mise à jour des dépendances backend..."
 cd "$BACKEND_DIR"
 npm install --omit=dev
 
+# BL-Host Wings : s'assurer que Docker est installé et configuré localement.
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Installation de Docker..."
+  curl -fsSL https://get.docker.com | sh
+fi
+systemctl enable --now docker || true
+if ! grep -q "^DOCKER_SOCKET=" "$BACKEND_DIR/.env" && ! grep -q "^DOCKER_HOST=" "$BACKEND_DIR/.env"; then
+  echo "DOCKER_SOCKET=/var/run/docker.sock" >> "$BACKEND_DIR/.env"
+fi
+if ! docker info >/dev/null 2>&1; then
+  echo "⚠ Docker non fonctionnel. Si LXC Proxmox, activez le nesting sur l'hôte :"
+  echo "    pct set <CTID> --features nesting=1,keyctl=1   (puis redémarrez le LXC)"
+fi
+
 # --- [3/4] Build et publication du frontend -----------------------------------
 echo "[3/4] Build du frontend..."
 cd "$FRONTEND_DIR"

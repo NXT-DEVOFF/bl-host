@@ -1,13 +1,70 @@
 # BL-Host Wings — Hôte Docker sur Proxmox
 
-Ce guide met en place l'**orchestrateur réel** des serveurs de jeu : une VM (ou un
-LXC) sur votre Proxmox, qui fait tourner Docker. Le panel BL-Host pilote ensuite
-cet hôte via l'API Docker (start/stop/restart/logs **réels**).
+Ce guide met en place l'**orchestrateur réel** des serveurs de jeu : Docker, piloté
+par le panel BL-Host via l'API Docker (start/stop/restart/logs/console **réels**).
 
-> Tant que ces variables ne sont pas configurées, le panel reste en **mode démo**
+> Tant que Docker n'est pas joignable, le panel reste en **mode démo**
 > (start/stop simulés) — rien ne casse.
 
+Deux approches :
+
+- **Option A (recommandée, la plus simple)** : Docker **sur le même LXC** que le
+  panel → socket local, aucun certificat. **Automatisé** par `deploy-vps.sh` /
+  `update-vps.sh`.
+- **Option B (avancée)** : Docker sur une **VM/hôte séparé**, piloté via l'API
+  Docker en **TLS** (sections 1 à 7 plus bas).
+
 ---
+
+## Option A — Tout sur le même LXC (recommandé)
+
+Le plus simple : le panel **et** Docker tournent dans le même conteneur LXC. Le
+backend utilise alors le socket local `/var/run/docker.sock` (le service tourne en
+root via PM2, donc l'accès au socket est immédiat).
+
+### Prérequis Proxmox : activer le « nesting » sur le LXC
+
+Docker ne peut tourner dans un LXC que si celui-ci a le **nesting** activé. Sur
+l'**hôte Proxmox** (pas dans le LXC) :
+
+```bash
+pct set <CTID> --features nesting=1,keyctl=1
+pct reboot <CTID>
+```
+
+(`<CTID>` = l'ID de votre conteneur LXC, ex. `100`.)
+
+### Déploiement
+
+Lancez simplement le déploiement habituel **dans le LXC** : il installe Node,
+Nginx, PM2 **et Docker**, configure `DOCKER_SOCKET=/var/run/docker.sock`, puis
+démarre tout (Docker compris) au boot.
+
+```bash
+sudo bash deploy-vps.sh          # première installation
+# ou, si déjà déployé :
+sudo bash /home/blhost/app/update-vps.sh
+```
+
+Vérifiez ensuite :
+
+```bash
+docker info                                   # doit répondre sans erreur
+pm2 logs bl-host-api | grep -i docker         # « Service Docker initialisé. »
+```
+
+Puis **créez un nouveau serveur** dans le panel (les anciens serveurs démo n'ont
+pas de conteneur et restent en mode démo). C'est tout — pas de certificats à gérer.
+
+> Si `docker info` échoue, c'est presque toujours le **nesting** non activé
+> (voir ci-dessus).
+
+---
+
+## Option B — Hôte Docker séparé (avancé, TLS)
+
+Les sections ci-dessous décrivent l'alternative : Docker sur une **VM/hôte
+distant** piloté par le panel via TCP+TLS. Inutile si vous avez choisi l'option A.
 
 ## 1. Créer la VM Docker sur Proxmox
 

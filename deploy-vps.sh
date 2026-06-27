@@ -91,6 +91,22 @@ node --version
 npm --version
 nginx -v
 
+# --- [4b/13] Docker (BL-Host Wings : exécution réelle des serveurs de jeu) -----
+echo "[4b/13] Installation de Docker..."
+if ! command -v docker >/dev/null 2>&1; then
+  curl -fsSL https://get.docker.com | sh
+fi
+systemctl enable --now docker || true
+# Test : Docker doit pouvoir lancer un conteneur. Dans un LXC, cela exige que le
+# conteneur ait l'option « nesting » activée côté Proxmox.
+if docker info >/dev/null 2>&1; then
+  echo "✓ Docker opérationnel."
+else
+  echo "⚠ Docker installé mais non fonctionnel."
+  echo "  Si ce serveur est un LXC Proxmox, activez le nesting sur l'hôte Proxmox :"
+  echo "    pct set <CTID> --features nesting=1,keyctl=1   (puis redémarrez le LXC)"
+fi
+
 # --- [5/13] Utilisateur applicatif --------------------------------------------
 echo "[5/13] Création de l'utilisateur système 'blhost'..."
 if ! id "blhost" &>/dev/null; then
@@ -138,7 +154,14 @@ JWT_EXPIRATION=7d
 # CORS et logs
 CORS_ORIGIN=$PROTO://$DOMAIN
 LOG_LEVEL=info
+
+# BL-Host Wings : Docker local (même machine que le panel)
+DOCKER_SOCKET=/var/run/docker.sock
 EOF
+fi
+# Pour les déploiements existants : ajoute la config Docker locale si absente.
+if ! grep -q "^DOCKER_SOCKET=" "$BACKEND_DIR/.env" && ! grep -q "^DOCKER_HOST=" "$BACKEND_DIR/.env"; then
+  echo "DOCKER_SOCKET=/var/run/docker.sock" >> "$BACKEND_DIR/.env"
 fi
 chown blhost:blhost "$BACKEND_DIR/.env"
 chmod 600 "$BACKEND_DIR/.env"
