@@ -17,6 +17,12 @@ router.get('/:id/status', serverController.getServerStatus);
 // Get server console logs
 router.get('/:id/logs', serverController.getServerLogs);
 
+// Get live resource usage (CPU / RAM)
+router.get('/:id/stats', serverController.getServerStats);
+
+// Send a command to the game server console
+router.post('/:id/command', serverController.sendServerCommand);
+
 // Update server
 router.put('/:id', serverController.updateServer);
 

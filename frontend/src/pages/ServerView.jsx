@@ -12,6 +12,9 @@ const ServerView = () => {
   const [actionLoading, setActionLoading] = useState('');
   const [logs, setLogs] = useState('');
   const [logsLive, setLogsLive] = useState(false);
+  const [stats, setStats] = useState(null);
+  const [command, setCommand] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     const fetchServer = async () => {
@@ -48,17 +51,43 @@ const ServerView = () => {
     }
   };
 
-  // Rafraîchit automatiquement le statut et la console toutes les 5 secondes.
+  const refreshStats = async () => {
+    try {
+      const res = await serverService.getServerStats(id);
+      setStats(res.data);
+    } catch (err) {
+      // Silencieux.
+    }
+  };
+
+  // Rafraîchit automatiquement statut, console et métriques toutes les 5 s.
   useEffect(() => {
     if (!server) return undefined;
     refreshLogs();
+    refreshStats();
     const interval = setInterval(() => {
       refreshStatus();
       refreshLogs();
+      refreshStats();
     }, 5000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [server?.id]);
+
+  const handleSendCommand = async (e) => {
+    e.preventDefault();
+    if (!command.trim()) return;
+    setSending(true);
+    try {
+      await serverService.sendCommand(id, command);
+      setCommand('');
+      setTimeout(refreshLogs, 600);
+    } catch (err) {
+      setError(err.error?.message || "Impossible d'envoyer la commande.");
+    } finally {
+      setSending(false);
+    }
+  };
 
   const handleAction = async (action) => {
     setActionLoading(action);
@@ -236,7 +265,7 @@ const ServerView = () => {
         {server.status === 'online' ? (
           <button
             onClick={() => handleAction('stop')}
-            disabled={Boolean(actionLoading)}
+            disabled={Boolean(actionLoading) || server.status === 'starting' || server.status === 'stopping'}
             className="btn-danger inline-flex items-center px-4 py-2 disabled:opacity-60"
           >
             {actionLoading === 'stop' ? <FiLoader className="mr-2 animate-spin" /> : <FiPause className="mr-2" />}
@@ -245,7 +274,7 @@ const ServerView = () => {
         ) : (
           <button
             onClick={() => handleAction('start')}
-            disabled={Boolean(actionLoading)}
+            disabled={Boolean(actionLoading) || server.status === 'starting' || server.status === 'stopping'}
             className="btn-primary inline-flex items-center px-4 py-2 disabled:opacity-60"
           >
             {actionLoading === 'start' ? <FiLoader className="mr-2 animate-spin" /> : <FiPlay className="mr-2" />}
@@ -268,6 +297,50 @@ const ServerView = () => {
         </Link>
       </div>
 
+      {/* Métriques temps réel (CPU / RAM) */}
+      <div className="card-pro mt-6">
+        <div className="card-pro-header">
+          <h3 className="card-pro-title">Ressources</h3>
+          <span className={`badge ${stats?.live ? 'badge-success' : 'badge-secondary'}`}>
+            {stats?.live ? 'Temps réel' : 'Mode démo'}
+          </span>
+        </div>
+        <div className="card-pro-content grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {/* CPU */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">CPU</span>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {stats ? `${stats.cpuPercent}%` : '—'}
+              </span>
+            </div>
+            <div className="h-2.5 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500"
+                style={{ width: `${Math.min(stats?.cpuPercent || 0, 100)}%` }}
+              />
+            </div>
+          </div>
+          {/* RAM */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Mémoire RAM</span>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {stats && stats.memLimitMB
+                  ? `${stats.memUsedMB} / ${stats.memLimitMB} MB`
+                  : `— / ${server.memory || 0} MB`}
+              </span>
+            </div>
+            <div className="h-2.5 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-green-500 transition-all duration-500"
+                style={{ width: `${Math.min(stats?.memPercent || 0, 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Console en direct du serveur de jeu */}
       <div className="card-pro mt-6">
         <div className="card-pro-header">
@@ -282,6 +355,32 @@ const ServerView = () => {
           <pre className="bg-gray-900 text-green-300 text-xs rounded-lg p-4 h-72 overflow-auto whitespace-pre-wrap font-mono">
             {logs || 'Chargement de la console...'}
           </pre>
+
+          <form onSubmit={handleSendCommand} className="mt-3 flex items-center gap-2">
+            <span className="text-gray-400 font-mono select-none">&gt;</span>
+            <input
+              type="text"
+              value={command}
+              onChange={(e) => setCommand(e.target.value)}
+              placeholder={
+                logsLive
+                  ? (server.status === 'online'
+                      ? 'Tapez une commande (ex: say Bonjour) puis Entrée'
+                      : 'Le serveur doit être en ligne pour envoyer des commandes')
+                  : 'Console interactive indisponible en mode démo'
+              }
+              disabled={!logsLive || server.status !== 'online' || sending}
+              className="input-pro-sm flex-1 font-mono disabled:opacity-60"
+            />
+            <button
+              type="submit"
+              disabled={!logsLive || server.status !== 'online' || sending || !command.trim()}
+              className="btn-primary inline-flex items-center px-4 py-2 disabled:opacity-60"
+            >
+              {sending ? <FiLoader className="mr-2 animate-spin" /> : null}
+              Envoyer
+            </button>
+          </form>
         </div>
       </div>
     </div>

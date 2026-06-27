@@ -16,9 +16,12 @@ Le plus simple et le plus robuste est une **VM** (Debian 12) plutôt qu'un LXC
 
 1. Téléversez une ISO Debian 12 et créez une VM (ex. 4 vCPU, 8 Go RAM, 80 Go disque).
 2. Installez Debian, notez son **IP locale** (ex. `192.168.1.50`).
-3. Installez Docker :
+3. Installez les prérequis puis Docker (en root) :
 
 ```bash
+# Sur une Debian 12 minimale, curl/openssl ne sont pas toujours présents
+apt-get update && apt-get install -y curl openssl ca-certificates
+
 curl -fsSL https://get.docker.com | sh
 systemctl enable --now docker
 ```

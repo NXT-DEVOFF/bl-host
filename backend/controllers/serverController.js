@@ -89,6 +89,29 @@ const getServerLogs = handleAsyncError(async (req, res) => {
   });
 });
 
+const getServerStats = handleAsyncError(async (req, res) => {
+  const { userId } = req;
+  const { id } = req.params;
+  const result = await serverService.getServerStats(id, userId);
+
+  res.json({
+    success: true,
+    data: result,
+  });
+});
+
+const sendServerCommand = handleAsyncError(async (req, res) => {
+  const { userId } = req;
+  const { id } = req.params;
+  const { command } = req.body;
+  const result = await serverService.sendCommand(id, userId, command);
+
+  res.json({
+    success: true,
+    data: result,
+  });
+});
+
 module.exports = {
   createServer,
   getServers,
@@ -98,4 +121,6 @@ module.exports = {
   toggleServerStatus,
   getServerStatus,
   getServerLogs,
+  getServerStats,
+  sendServerCommand,
 };

@@ -6,6 +6,12 @@ const dockerService = require('./dockerService');
 const { resolveGameImage } = require('../config/games');
 
 class ServerService {
+  constructor() {
+    // Transitions en cours par serveur : id -> 'starting' | 'stopping'.
+    // Permet d'afficher des états transitoires pendant les opérations Docker.
+    this._transitions = new Map();
+  }
+
   async createServer(userId, data) {
     const { name, game, ip_address, port, description, memory, disk, cpu, ports } = data;
 
@@ -137,18 +143,13 @@ class ServerService {
 
     // --- Gestion RÉELLE via Docker si un conteneur est associé ---
     if (dockerService.isEnabled() && server.container_id) {
-      try {
-        if (action === 'start') await dockerService.start(server.container_id);
-        else if (action === 'stop') await dockerService.stop(server.container_id);
-        else if (action === 'restart') await dockerService.restart(server.container_id);
-
-        const status = await dockerService.status(server.container_id);
-        await server.update({ status });
-        return server;
-      } catch (err) {
-        logger.error('Action Docker échouée.', { serverId, action, error: err.message });
-        throw new AppError("Impossible d'exécuter l'action sur le conteneur", 502, 'DOCKER_ERROR');
-      }
+      // On marque un état transitoire et on lance l'opération en arrière-plan :
+      // le statut réel sera reflété par le polling de getServerStatus().
+      const transitional = action === 'stop' ? 'stopping' : 'starting';
+      this._transitions.set(server.id, transitional);
+      await server.update({ status: transitional });
+      this._runDockerAction(server, action);
+      return server;
     }
 
     // --- Repli : simulation (mode démo) ---
@@ -162,13 +163,58 @@ class ServerService {
     return server;
   }
 
-  /** Renvoie l'état réel du serveur (depuis Docker si disponible). */
+  /** Exécute l'action Docker en arrière-plan (non bloquant). */
+  async _runDockerAction(server, action) {
+    try {
+      if (action === 'start') await dockerService.start(server.container_id);
+      else if (action === 'restart') await dockerService.restart(server.container_id);
+      else if (action === 'stop') await dockerService.stop(server.container_id);
+    } catch (err) {
+      logger.error('Action Docker échouée.', { serverId: server.id, action, error: err.message });
+      this._transitions.delete(server.id);
+      try {
+        await server.update({ status: 'offline' });
+      } catch (e) {
+        /* ignore */
+      }
+    }
+  }
+
+  /** Renvoie l'état réel du serveur (depuis Docker + transitions en cours). */
   async getServerStatus(serverId, userId) {
     const server = await this.getServerById(serverId, userId);
 
     if (dockerService.isEnabled() && server.container_id) {
       try {
-        const status = await dockerService.status(server.container_id);
+        const raw = await dockerService.status(server.container_id); // online | offline | starting
+        const transition = this._transitions.get(server.id);
+        let status = raw;
+
+        if (transition === 'stopping') {
+          if (raw === 'offline') {
+            this._transitions.delete(server.id);
+            status = 'offline';
+          } else {
+            status = 'stopping';
+          }
+        } else if (transition === 'starting') {
+          if (raw === 'online') {
+            const gameConfig = resolveGameImage(server.game);
+            const ready = await dockerService.isReady(
+              server.container_id,
+              gameConfig && gameConfig.readyPattern
+            );
+            if (ready) {
+              this._transitions.delete(server.id);
+              status = 'online';
+            } else {
+              status = 'starting';
+            }
+          } else {
+            status = 'starting';
+          }
+        }
+
         if (status !== server.status) await server.update({ status });
         return { status, live: true };
       } catch (err) {
@@ -177,6 +223,62 @@ class ServerService {
     }
 
     return { status: server.status, live: false };
+  }
+
+  /** Métriques temps réel (CPU %, RAM) du serveur. */
+  async getServerStats(serverId, userId) {
+    const server = await this.getServerById(serverId, userId);
+    const fallback = {
+      live: false,
+      running: server.status === 'online',
+      cpuPercent: 0,
+      memUsedMB: 0,
+      memLimitMB: server.memory || 0,
+      memPercent: 0,
+    };
+
+    if (dockerService.isEnabled() && server.container_id) {
+      try {
+        const status = await dockerService.status(server.container_id);
+        if (status !== 'online') {
+          return { ...fallback, live: true, running: false };
+        }
+        const stats = await dockerService.stats(server.container_id);
+        return { live: true, running: true, ...stats };
+      } catch (err) {
+        logger.error('Lecture des stats Docker échouée.', { serverId, error: err.message });
+      }
+    }
+
+    return fallback;
+  }
+
+  /** Envoie une commande à la console du serveur de jeu. */
+  async sendCommand(serverId, userId, command) {
+    const server = await this.getServerById(serverId, userId);
+
+    if (!command || !String(command).trim()) {
+      throw new AppError('Commande vide', 400, 'EMPTY_COMMAND');
+    }
+
+    if (dockerService.isEnabled() && server.container_id) {
+      if (server.status !== 'online') {
+        throw new AppError('Le serveur doit être en ligne', 409, 'SERVER_NOT_ONLINE');
+      }
+      try {
+        await dockerService.sendCommand(server.container_id, command);
+        return { sent: true, live: true };
+      } catch (err) {
+        logger.error('Envoi de commande échoué.', { serverId, error: err.message });
+        throw new AppError("Impossible d'envoyer la commande", 502, 'DOCKER_ERROR');
+      }
+    }
+
+    return {
+      sent: false,
+      live: false,
+      message: 'Console interactive indisponible en mode démo.',
+    };
   }
 
   /** Renvoie les derniers logs (console) du serveur de jeu. */

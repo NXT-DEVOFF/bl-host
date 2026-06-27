@@ -36,6 +36,8 @@ class DockerService {
   constructor() {
     this.docker = null;
     this.enabled = false;
+    // Flux stdin persistants par conteneur (console interactive).
+    this._stdin = new Map();
     this._init();
   }
 
@@ -154,6 +156,9 @@ class DockerService {
       name: this.containerName(serverId),
       Image: gameConfig.image,
       Tty: true,
+      // stdin ouvert : permet d'envoyer des commandes à la console du jeu.
+      OpenStdin: true,
+      StdinOnce: false,
       Env: Object.entries(env).map(([k, v]) => `${k}=${v}`),
       ExposedPorts: { [portKey]: {} },
       HostConfig: {
@@ -221,6 +226,83 @@ class DockerService {
       timestamps: false,
     });
     return buffer.toString('utf8');
+  }
+
+  /**
+   * Indique si le serveur est « prêt » en cherchant un motif dans les logs.
+   * Si aucun motif n'est fourni, on considère le serveur prêt dès qu'il tourne.
+   */
+  async isReady(containerId, pattern, tail = 80) {
+    if (!pattern) return true;
+    try {
+      const text = await this.logs(containerId, tail);
+      return new RegExp(pattern, 'i').test(text);
+    } catch (err) {
+      return false;
+    }
+  }
+
+  /** Statistiques temps réel : CPU %, RAM utilisée/limite (en Mo). */
+  async stats(containerId) {
+    const container = this.docker.getContainer(containerId);
+    const s = await container.stats({ stream: false });
+
+    // Calcul du % CPU à la manière de `docker stats`.
+    const cpuDelta =
+      (s.cpu_stats?.cpu_usage?.total_usage || 0) -
+      (s.precpu_stats?.cpu_usage?.total_usage || 0);
+    const systemDelta =
+      (s.cpu_stats?.system_cpu_usage || 0) -
+      (s.precpu_stats?.system_cpu_usage || 0);
+    const cpuCount =
+      s.cpu_stats?.online_cpus ||
+      (s.cpu_stats?.cpu_usage?.percpu_usage?.length) ||
+      1;
+    let cpuPercent = 0;
+    if (systemDelta > 0 && cpuDelta > 0) {
+      cpuPercent = (cpuDelta / systemDelta) * cpuCount * 100;
+    }
+
+    const memUsed =
+      (s.memory_stats?.usage || 0) - (s.memory_stats?.stats?.cache || 0);
+    const memLimit = s.memory_stats?.limit || 0;
+
+    return {
+      cpuPercent: Math.round(cpuPercent * 10) / 10,
+      memUsedMB: Math.round(memUsed / 1048576),
+      memLimitMB: Math.round(memLimit / 1048576),
+      memPercent: memLimit ? Math.round((memUsed / memLimit) * 1000) / 10 : 0,
+    };
+  }
+
+  /**
+   * Envoie une commande à la console du serveur de jeu (via stdin du conteneur).
+   * Réutilise un flux stdin persistant par conteneur.
+   */
+  async sendCommand(containerId, command) {
+    const clean = String(command).replace(/[\r\n]+/g, '');
+    if (!clean) return false;
+
+    let stream = this._stdin.get(containerId);
+    if (!stream || stream.destroyed || stream.writable === false) {
+      const container = this.docker.getContainer(containerId);
+      stream = await container.attach({
+        stream: true,
+        stdin: true,
+        stdout: true,
+        stderr: true,
+        hijack: true,
+      });
+      // On ne consomme pas la sortie ici (elle est lue via `logs`), mais on
+      // draine le flux pour éviter toute contre-pression.
+      stream.on('data', () => {});
+      stream.on('close', () => this._stdin.delete(containerId));
+      stream.on('error', () => this._stdin.delete(containerId));
+      this._stdin.set(containerId, stream);
+    }
+
+    stream.write(clean + '\n');
+    return true;
   }
 }
 

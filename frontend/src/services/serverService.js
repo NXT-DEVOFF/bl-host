@@ -33,6 +33,14 @@ const serverService = {
     return apiClient.get(`/servers/${id}/logs?tail=${tail}`);
   },
 
+  getServerStats: async (id) => {
+    return apiClient.get(`/servers/${id}/stats`);
+  },
+
+  sendCommand: async (id, command) => {
+    return apiClient.post(`/servers/${id}/command`, { command });
+  },
+
   getStats: async () => {
     return apiClient.get('/stats');
   },

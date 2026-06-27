@@ -11,6 +11,8 @@
 //   env           : variables d'environnement de base passées au conteneur
 //   memoryEnv     : (optionnel) fonction (RAM en Mo) -> variables d'env liées à
 //                   la mémoire (certaines images veulent connaître la RAM)
+//   readyPattern  : (optionnel) regex cherchée dans les logs pour savoir que le
+//                   serveur est réellement « prêt » (sinon: prêt dès qu'il tourne)
 // =============================================================================
 
 const GAME_IMAGES = {
@@ -22,6 +24,7 @@ const GAME_IMAGES = {
     dataPath: '/data',
     env: { EULA: 'TRUE', TYPE: 'VANILLA' },
     memoryEnv: (mb) => ({ MEMORY: `${mb}M` }),
+    readyPattern: 'Done \\(',
   },
   rust: {
     label: 'Rust',
@@ -30,6 +33,7 @@ const GAME_IMAGES = {
     protocol: 'udp',
     dataPath: '/steamcmd/rust',
     env: { RUST_SERVER_NAME: 'BL-Host Rust', RUST_SERVER_MAXPLAYERS: '50' },
+    readyPattern: 'SteamServer Initialized',
   },
   valheim: {
     label: 'Valheim',
@@ -38,6 +42,7 @@ const GAME_IMAGES = {
     protocol: 'udp',
     dataPath: '/config',
     env: { SERVER_NAME: 'BL-Host', WORLD_NAME: 'BLHost', SERVER_PASS: 'changeme123' },
+    readyPattern: 'Game server connected',
   },
   csgo: {
     label: 'CS2 / CS:GO',
@@ -46,6 +51,7 @@ const GAME_IMAGES = {
     protocol: 'udp',
     dataPath: '/home/steam/csgo-dedicated',
     env: {},
+    readyPattern: 'GC Connection established',
   },
   terraria: {
     label: 'Terraria',
@@ -54,6 +60,7 @@ const GAME_IMAGES = {
     protocol: 'tcp',
     dataPath: '/config',
     env: {},
+    readyPattern: 'Server started',
   },
 };
 
